@@ -10,8 +10,7 @@ import (
 	"math/big"
 )
 
-// Start with a pre set difficulty. This should increase over time
-const Difficulty = 12
+const Difficulty = 18
 
 type ProofOfWork struct {
 	Block  *Block
@@ -27,10 +26,6 @@ func NewProof(b *Block) *ProofOfWork {
 	return pow
 }
 
-/* 
-* Takes the nonce and return the data as a slice of bytes
-* The data is generated from prevHash + Data + nonce + difficulty converted to Hex
-*/
 func (pow *ProofOfWork) InitData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
@@ -41,6 +36,7 @@ func (pow *ProofOfWork) InitData(nonce int) []byte {
 		},
 		[]byte{},
 	)
+
 	return data
 }
 
@@ -62,13 +58,13 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 		} else {
 			nonce++
 		}
-	}
 
+	}
 	fmt.Println()
+
 	return nonce, hash[:]
 }
 
-// Validate the pow
 func (pow *ProofOfWork) Validate() bool {
 	var intHash big.Int
 
@@ -80,12 +76,12 @@ func (pow *ProofOfWork) Validate() bool {
 	return intHash.Cmp(pow.Target) == -1
 }
 
-// Utility function to return a slice of bytes from an integer (nonce or difficulty)
 func ToHex(num int64) []byte {
 	buff := new(bytes.Buffer)
 	err := binary.Write(buff, binary.BigEndian, num)
 	if err != nil {
 		log.Panic(err)
+
 	}
 
 	return buff.Bytes()
