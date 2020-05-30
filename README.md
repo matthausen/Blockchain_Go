@@ -1,3 +1,3 @@
-From the YouTube tutorial https://www.youtube.com/watch?v=TUl8Ja2ZY2A
+From the YouTube tutorial https://www.youtube.com/watch?v=ZHT2uraywiQ
 
-https://github.com/tensor-programming/golang-blockchain/blob/part_8/blockchain/blockchain.go
+https://github.com/tensor-programming/golang-blockchain/blob/part_9/blockchain/blockchain.go

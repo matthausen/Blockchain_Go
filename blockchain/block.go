@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/gob"
 	"log"
 )
@@ -16,14 +15,13 @@ type Block struct {
 
 func (b *Block) HashTransactions() []byte {
 	var txHashes [][]byte
-	var txHash [32]byte
 
 	for _, tx := range b.Transactions {
-		txHashes = append(txHashes, tx.ID)
+		txHashes = append(txHashes, tx.Serialize())
 	}
-	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	tree := NewMerkleTree(txHashes)
 
-	return txHash[:]
+	return tree.RootNode.Data
 }
 
 func CreateBlock(txs []*Transaction, prevHash []byte) *Block {
@@ -43,16 +41,13 @@ func Genesis(coinbase *Transaction) *Block {
 
 func (b *Block) Serialize() []byte {
 	var res bytes.Buffer
-
 	encoder := gob.NewEncoder(&res)
+
 	err := encoder.Encode(b)
 
-	if err != nil {
-		log.Panic(err)
-	}
+	Handle(err)
 
 	return res.Bytes()
-
 }
 
 func Deserialize(data []byte) *Block {
@@ -62,9 +57,7 @@ func Deserialize(data []byte) *Block {
 
 	err := decoder.Decode(&block)
 
-	if err != nil {
-		log.Panic(err)
-	}
+	Handle(err)
 
 	return &block
 }

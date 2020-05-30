@@ -22,6 +22,17 @@ type Transaction struct {
 	Outputs []TxOutput
 }
 
+func (tx *Transaction) Hash() []byte {
+	var hash [32]byte
+
+	txCopy := *tx
+	txCopy.ID = []byte{}
+
+	hash = sha256.Sum256(txCopy.Serialize())
+
+	return hash[:]
+}
+
 func (tx Transaction) Serialize() []byte {
 	var encoded bytes.Buffer
 
@@ -34,40 +45,20 @@ func (tx Transaction) Serialize() []byte {
 	return encoded.Bytes()
 }
 
-func (tx *Transaction) Hash() []byte {
-	var hash [32]byte
-
-	txCopy := *tx
-	txCopy.ID = []byte{}
-
-	hash = sha256.Sum256(txCopy.Serialize())
-
-	return hash[:]
-}
-
-func (tx *Transaction) SetID() {
-	var encoded bytes.Buffer
-	var hash [32]byte
-
-	encode := gob.NewEncoder(&encoded)
-	err := encode.Encode(tx)
-	Handle(err)
-
-	hash = sha256.Sum256(encoded.Bytes())
-	tx.ID = hash[:]
-}
-
 func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
-		data = fmt.Sprintf("Coins to %s", to)
+		randData := make([]byte, 24)
+		_, err := rand.Read(randData)
+		Handle(err)
+		data = fmt.Sprintf("%x", randData)
 	}
 
 	txin := TxInput{[]byte{}, -1, nil, []byte(data)}
-	// Release 100 token to the account who mines the block
-	txout := NewTXOutput(100, to)
+	// The reward for mining
+	txout := NewTXOutput(20, to)
 
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
-	tx.SetID()
+	tx.ID = tx.Hash()
 
 	return &tx
 }
@@ -120,9 +111,10 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 
 	for _, in := range tx.Inputs {
 		if prevTXs[hex.EncodeToString(in.ID)].ID == nil {
-			log.Panic("Error: Previous transaction is not correct")
+			log.Panic("ERROR: Previous transaction is not correct")
 		}
 	}
+
 	txCopy := tx.TrimmedCopy()
 
 	for inId, in := range txCopy.Inputs {
@@ -137,24 +129,8 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 		signature := append(r.Bytes(), s.Bytes()...)
 
 		tx.Inputs[inId].Signature = signature
+
 	}
-}
-
-func (tx *Transaction) TrimmedCopy() Transaction {
-	var inputs []TxInput
-	var outputs []TxOutput
-
-	for _, in := range tx.Inputs {
-		inputs = append(inputs, TxInput{in.ID, in.Out, nil, nil})
-	}
-
-	for _, out := range tx.Outputs {
-		outputs = append(outputs, TxOutput{out.Value, out.PubKeyHash})
-	}
-
-	txCopy := Transaction{tx.ID, inputs, outputs}
-
-	return txCopy
 }
 
 func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
@@ -164,7 +140,7 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 
 	for _, in := range tx.Inputs {
 		if prevTXs[hex.EncodeToString(in.ID)].ID == nil {
-			log.Panic("Previous transaction does not exist")
+			log.Panic("Previous transaction not correct")
 		}
 	}
 
@@ -198,6 +174,23 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 	}
 
 	return true
+}
+
+func (tx *Transaction) TrimmedCopy() Transaction {
+	var inputs []TxInput
+	var outputs []TxOutput
+
+	for _, in := range tx.Inputs {
+		inputs = append(inputs, TxInput{in.ID, in.Out, nil, nil})
+	}
+
+	for _, out := range tx.Outputs {
+		outputs = append(outputs, TxOutput{out.Value, out.PubKeyHash})
+	}
+
+	txCopy := Transaction{tx.ID, inputs, outputs}
+
+	return txCopy
 }
 
 func (tx Transaction) String() string {
